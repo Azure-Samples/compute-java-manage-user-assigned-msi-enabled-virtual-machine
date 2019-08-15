@@ -4,12 +4,12 @@ languages:
 - java
 products:
 - azure
-services: Compute
-platforms: java
-author: yaohaizh
+extensions:
+- services: Compute
+- platforms: java
 ---
 
-## Getting Started with Compute - Manage User Assigned MSI Enabled Virtual Machine - in Java ##
+# Getting Started with Compute - Manage User Assigned MSI Enabled Virtual Machine - in Java #
 
 
   Azure Compute sample for managing virtual machines -
