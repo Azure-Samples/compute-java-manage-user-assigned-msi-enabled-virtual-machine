@@ -4,9 +4,8 @@ languages:
 - java
 products:
 - azure
-extensions:
-- services: Compute
-- platforms: java
+description: "Create a Resource Group and User Assigned MSI with CONTRIBUTOR access to the resource group"
+urlFragment: compute-java-manage-user-assigned-msi-enabled-virtual-machine
 ---
 
 # Getting Started with Compute - Manage User Assigned MSI Enabled Virtual Machine - in Java #
