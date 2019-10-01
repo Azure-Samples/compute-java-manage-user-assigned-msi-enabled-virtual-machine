@@ -8,7 +8,7 @@ description: "Create a Resource Group and User Assigned MSI with CONTRIBUTOR acc
 urlFragment: compute-java-manage-user-assigned-msi-enabled-virtual-machine
 ---
 
-# Getting Started with Compute - Manage User Assigned MSI Enabled Virtual Machine - in Java #
+# Manage User Assigned MSI Enabled Virtual Machine (Java)
 
 
   Azure Compute sample for managing virtual machines -
