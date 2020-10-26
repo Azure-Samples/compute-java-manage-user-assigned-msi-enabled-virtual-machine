@@ -1,26 +1,26 @@
-/**
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for
- * license information.
- */
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-package com.microsoft.azure.management.compute.samples;
+package com.azure.resourcemanager.compute.samples;
 
-import com.microsoft.azure.PagedList;
-import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.compute.KnownLinuxVirtualMachineImage;
-import com.microsoft.azure.management.compute.RunCommandInput;
-import com.microsoft.azure.management.compute.RunCommandResult;
-import com.microsoft.azure.management.compute.VirtualMachine;
-import com.microsoft.azure.management.compute.VirtualMachineSizeTypes;
-import com.microsoft.azure.management.graphrbac.BuiltInRole;
-import com.microsoft.azure.management.msi.Identity;
-import com.microsoft.azure.management.resources.ResourceGroup;
-import com.microsoft.azure.management.resources.fluentcore.arm.Region;
-import com.microsoft.azure.management.samples.Utils;
-import com.microsoft.rest.LogLevel;
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.http.rest.PagedIterable;
+import com.azure.core.management.AzureEnvironment;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.resourcemanager.AzureResourceManager;
+import com.azure.resourcemanager.compute.models.KnownLinuxVirtualMachineImage;
+import com.azure.resourcemanager.compute.models.RunCommandInput;
+import com.azure.resourcemanager.compute.models.RunCommandResult;
+import com.azure.resourcemanager.compute.models.VirtualMachine;
+import com.azure.resourcemanager.compute.models.VirtualMachineSizeTypes;
+import com.azure.resourcemanager.authorization.models.BuiltInRole;
+import com.azure.resourcemanager.msi.models.Identity;
+import com.azure.resourcemanager.resources.models.ResourceGroup;
+import com.azure.core.management.Region;
+import com.azure.core.management.profile.AzureProfile;
+import com.azure.resourcemanager.samples.Utils;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,18 +37,17 @@ public final class ManageUserAssignedMSIEnabledVirtualMachine {
     /**
      * Main function which runs the actual sample.
      *
-     * @param azure instance of the azure client
+     * @param azureResourceManager instance of the azure client
      * @return true if sample runs successfully
      */
-    public static boolean runSample(Azure azure) {
-        final String rgName1 = Utils.createRandomName("uamsi-rg-1");
-        final String rgName2 = Utils.createRandomName("uamsi-rg-2");
-        final String identityName = Utils.createRandomName("id");
-        final String linuxVMName = Utils.createRandomName("VM1");
-        final String pipName = Utils.createRandomName("pip1");
+    public static boolean runSample(AzureResourceManager azureResourceManager) {
+        final String rgName1 = Utils.randomResourceName(azureResourceManager, "uamsi-rg-1", 15);
+        final String rgName2 = Utils.randomResourceName(azureResourceManager, "uamsi-rg-2", 15);
+        final String identityName = Utils.randomResourceName(azureResourceManager, "id", 15);
+        final String linuxVMName = Utils.randomResourceName(azureResourceManager, "VM1", 15);
+        final String pipName = Utils.randomResourceName(azureResourceManager, "pip1", 15);
         final String userName = "tirekicker";
-        // [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification="Serves as an example, not for deployment. Please change when using this in your code.")]
-        final String password = "12NewPAwX0rd!";
+        final String password = Utils.password();
         final Region region = Region.US_WEST_CENTRAL;
 
 
@@ -59,12 +58,12 @@ public final class ManageUserAssignedMSIEnabledVirtualMachine {
 
             System.out.println("Creating a Resource Group and User Assigned MSI with CONTRIBUTOR access to the resource group");
 
-            ResourceGroup resourceGroup1 = azure.resourceGroups()
+            ResourceGroup resourceGroup1 = azureResourceManager.resourceGroups()
                     .define(rgName1)
                     .withRegion(region)
                     .create();
 
-            Identity identity = azure.identities()
+            Identity identity = azureResourceManager.identities()
                     .define(identityName)
                     .withRegion(region)
                     .withNewResourceGroup(rgName2)
@@ -89,7 +88,7 @@ public final class ManageUserAssignedMSIEnabledVirtualMachine {
 
             System.out.println("Creating a Linux VM with MSI associated and install Java8, Maven and Git");
 
-            VirtualMachine virtualMachine = azure.virtualMachines()
+            VirtualMachine virtualMachine = azureResourceManager.virtualMachines()
                     .define(linuxVMName)
                     .withRegion(region)
                     .withExistingResourceGroup(rgName2)
@@ -123,9 +122,9 @@ public final class ManageUserAssignedMSIEnabledVirtualMachine {
             List<String> commands = new ArrayList<>();
             commands.add("git clone https://github.com/Azure-Samples/compute-java-manage-vm-from-vm-with-msi-credentials.git");
             commands.add("cd compute-java-manage-vm-from-vm-with-msi-credentials");
-            commands.add(String.format("mvn clean compile exec:java -Dexec.args='%s %s %s'", azure.subscriptionId(), resourceGroup1.name(), identity.clientId()));
+            commands.add(String.format("mvn clean compile exec:java -Dexec.args='%s %s %s'", azureResourceManager.subscriptionId(), resourceGroup1.name(), identity.clientId()));
 
-            runCommandOnVM(azure, virtualMachine, commands);
+            runCommandOnVM(azureResourceManager, virtualMachine, commands);
 
             System.out.println("Java application executed");
 
@@ -134,36 +133,32 @@ public final class ManageUserAssignedMSIEnabledVirtualMachine {
 
             System.out.println("Retrieving the virtual machine created from the MSI enabled Linux VM");
 
-            PagedList<VirtualMachine> virtualMachines = azure.virtualMachines().listByResourceGroup(resourceGroup1.name());
+            PagedIterable<VirtualMachine> virtualMachines = azureResourceManager.virtualMachines().listByResourceGroup(resourceGroup1.name());
             for (VirtualMachine vm : virtualMachines) {
                 Utils.print(vm);
             }
 
             return true;
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            e.printStackTrace();
         } finally {
             try {
                 System.out.println("Deleting Resource Group: " + rgName1);
-                azure.resourceGroups().deleteByName(rgName1);
+                azureResourceManager.resourceGroups().deleteByName(rgName1);
                 System.out.println("Deleting Resource Group: " + rgName2);
-                azure.resourceGroups().deleteByName(rgName2);
+                azureResourceManager.resourceGroups().deleteByName(rgName2);
             } catch (NullPointerException npe) {
                 System.out.println("Did not create any resources in Azure. No clean up is necessary");
             } catch (Exception g) {
                 g.printStackTrace();
             }
         }
-        return false;
     }
 
-    private static RunCommandResult runCommandOnVM(Azure azure, VirtualMachine virtualMachine, List<String> commands) {
+    private static RunCommandResult runCommandOnVM(AzureResourceManager azureResourceManager, VirtualMachine virtualMachine, List<String> commands) {
         RunCommandInput runParams = new RunCommandInput()
                 .withCommandId("RunShellScript")
                 .withScript(commands);
 
-        return azure.virtualMachines().runCommand(virtualMachine.resourceGroupName(), virtualMachine.name(), runParams);
+        return azureResourceManager.virtualMachines().runCommand(virtualMachine.resourceGroupName(), virtualMachine.name(), runParams);
     }
 
     /**
@@ -175,17 +170,21 @@ public final class ManageUserAssignedMSIEnabledVirtualMachine {
             //=============================================================
             // Authenticate
 
-            final File credFile = new File(System.getenv("AZURE_AUTH_LOCATION"));
+            final AzureProfile profile = new AzureProfile(AzureEnvironment.AZURE);
+            final TokenCredential credential = new DefaultAzureCredentialBuilder()
+                .authorityHost(profile.getEnvironment().getActiveDirectoryEndpoint())
+                .build();
 
-            Azure azure = Azure.configure()
-                    .withLogLevel(LogLevel.BODY_AND_HEADERS)
-                    .authenticate(credFile)
-                    .withDefaultSubscription();
+            AzureResourceManager azureResourceManager = AzureResourceManager
+                .configure()
+                .withLogLevel(HttpLogDetailLevel.BASIC)
+                .authenticate(credential, profile)
+                .withDefaultSubscription();
 
             // Print selected subscription
-            System.out.println("Selected subscription: " + azure.subscriptionId());
+            System.out.println("Selected subscription: " + azureResourceManager.subscriptionId());
 
-            runSample(azure);
+            runSample(azureResourceManager);
         } catch (Exception e) {
             System.out.println(e.getMessage());
             e.printStackTrace();
